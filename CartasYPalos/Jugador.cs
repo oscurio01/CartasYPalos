@@ -16,23 +16,28 @@ namespace CartasYPalos
     internal class Jugador
     {
         public bool SeRetira;
+        public bool EstaApostando;
         public int Dinero { get { return dinero; } }
-        public int DineroApostado { get { return dineroApostado; } set { dineroApostado = value; } }
         public List<Carta> Cartas { get; set; }
 
         int dinero;
-        int dineroApostado;
 
         public Jugador()
         {
             SeRetira = false;
+            EstaApostando = false;
             dinero = 1000;
             Cartas = new List<Carta>();
         }
 
-        public void AñadirCartas(int numeroDeCartas, Carta carta)
+        public void AñadirCartas(Carta carta)
         {
             Cartas.Add(carta);
+        }
+
+        public void AñadirCartas(List<Carta> cartas)
+        {
+            Cartas.AddRange(cartas);
         }
 
         public void MostrarMano()
@@ -63,6 +68,7 @@ namespace CartasYPalos
         public void Apuesta(int apuesta)
         {
             dinero -= apuesta ;
+            EstaApostando = true;
         }
 
         public TipoDeJugada ObtenerJugada(List<Carta>CartasEnLaMesa)
