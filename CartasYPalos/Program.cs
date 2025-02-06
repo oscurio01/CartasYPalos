@@ -21,7 +21,8 @@ namespace CartasYPalos
     internal class Program
     {
         static bool Salir = false;
-        static bool PasarDeRonda = true;
+        static bool unJugadorApostado = false;
+        static bool ApuestasIgualadas = true;
         static int cartasEnUnMazo = 2;
         static int numeroDeJugadores = 1;
         static int TurnoDelJugador = 0;
@@ -45,7 +46,14 @@ namespace CartasYPalos
                 IniciarRonda();
                 Partida();
             }
-            Console.WriteLine($"Bien hecho jugador {TurnoDelJugador + 1}, parece que tienes vida y afecto propio");
+
+            foreach(Jugador jugador in Jugadores)
+            {
+                if (!jugador.SeRetira)
+                    TurnoDelJugador = Jugadores.IndexOf(jugador);
+            }
+
+            Console.WriteLine($"Bien hecho jugador {TurnoDelJugador + 1}, parece que eres el unico en pie");
         }
 
         static int LeerUnNumeroCorrecto(int maximo, int minimo = 0, string texto = "Numero no valido")
@@ -80,7 +88,7 @@ namespace CartasYPalos
         {
             for (int j = 0; j < cartasEnUnMazo; j++)
             {
-                Jugadores[i].AñadirCartas(Baraja.Robar(TipoDeRobo.PrimeroEnLaBaraja));
+                Jugadores[i].AñadirCartas(Baraja);
             }
         }
 
@@ -88,7 +96,7 @@ namespace CartasYPalos
         {
             if(TurnoDelJugador != 0 && TurnoDelJugador != numeroDeJugadores)
                 return;
-            if(!PasarDeRonda)
+            if (!ApuestasIgualadas && unJugadorApostado)
                 return;
 
             switch (Ronda)
@@ -110,7 +118,11 @@ namespace CartasYPalos
             foreach (Jugador jugador in Jugadores)
             {
                 jugador.EstaApostando = false;
+                DiccionarioDeApuestas[jugador] = 0;
             }
+
+            dineroDeRonda = 0;
+            
         }
 
         static void Partida()
@@ -119,16 +131,14 @@ namespace CartasYPalos
 
             TurnoDelJugador = TurnoDelJugador % numeroDeJugadores;
 
-            bool unJugadorApostado = DiccionarioDeApuestas.Values.Any(apuesta => apuesta > 0);
-
             // Si casi los jugadores abandonan, gana el ultimo en pie
             if (Jugadores.Select(c => c.SeRetira).Count(v => v == true) == numeroDeJugadores - 1)
             {
                 Salir = true;
                 return;
             }
-
-            if (Jugadores[TurnoDelJugador].SeRetira || Jugadores[TurnoDelJugador].EstaApostando)
+            // Si el jugador se retira de esa partida no aparece mas hasta la siguiente
+            if (Jugadores[TurnoDelJugador].SeRetira)
             {
                 ++TurnoDelJugador;
                 if (TurnoDelJugador == numeroDeJugadores)
@@ -136,10 +146,79 @@ namespace CartasYPalos
                 return;
             }
 
+            MostrarPantalla();
+
+
+            eleccion = LeerUnNumeroCorrecto(3, 0);
+
+            switch (eleccion)
+            {
+                case 1:
+                    if (Jugadores[TurnoDelJugador].Dinero > 0 && Jugadores[TurnoDelJugador].Dinero >= dineroDeRonda)
+                        Apostar();
+                    else
+                    {
+                        Console.WriteLine("No tienes dinero");
+                        // Forzamos al jugador a retirarse si no tiene dinero suficiente para apostar
+                        Retirarse();
+                    }
+                    break;
+                case 2:
+                    if (unJugadorApostado)
+                        Console.WriteLine("No puedes pasar hay una apuesta, apuestas o te retiras");
+                    break;
+                case 3:
+                    Retirarse();
+                    break;
+                case 0:
+                    Salir = true;
+                    return;
+            }
+
+            ApuestasIgualadas = DiccionarioDeApuestas.Values.All(v=> v == DiccionarioDeApuestas.Values.Max());
+            // Para comprobar si alguien aposto dinero tanto en esta ronda como en la anterior
+            unJugadorApostado = dineroTotal != 0 ? true : DiccionarioDeApuestas.Values.Any(apuesta => apuesta > 0);
+
+            // Compruebo si alguien ha apostado y si las apuestas estan iguales
+            // Es decir que todos han apostado el maximo de la ronda 
+            if (!ApuestasIgualadas)
+            {
+                // Compruebo si tanto si el jugado ha apostado, como si el dinero es el maximo de la ronda
+                if (Jugadores[TurnoDelJugador].EstaApostando &&
+                    DiccionarioDeApuestas[Jugadores[TurnoDelJugador]] == dineroDeRonda)
+                {
+                    for (int i = 0; i < numeroDeJugadores; i++)
+                    {
+                        // Revisa quien no tiene el mismo monto de apuestas que el dinero de la ronda
+                        if (DiccionarioDeApuestas[Jugadores[i]] != dineroDeRonda)
+                        {
+                            TurnoDelJugador = Jugadores.IndexOf(Jugadores[i]);
+                            break;
+                        }
+                    }
+                }
+            }
+            else if (ApuestasIgualadas && unJugadorApostado)
+            {
+                TurnoDelJugador = numeroDeJugadores; // Si todas las apuestas son iguales y hay algo mas que un 0
+                ++Ronda;
+            }
+            else
+                ++TurnoDelJugador;
+
+            if (TurnoDelJugador == numeroDeJugadores && !unJugadorApostado)
+                ++Ronda;
+
+            Console.WriteLine("Pulsa Enter para continuar...");
+            Console.ReadLine();
+        }
+        
+        static void MostrarPantalla()
+        {
             Console.Clear();
             Console.WriteLine("Ronda : {0}", Ronda);
             Console.Write("Las cartas en la mesa son : ");
-            if(CartasEnLaMesa.Count > 0)
+            if (CartasEnLaMesa.Count > 0)
             {
                 for (int i = 0; i < CartasEnLaMesa.Count(); i++)
                 {
@@ -160,94 +239,34 @@ namespace CartasYPalos
 2.Pasar
 3.Retirarse
 ===========");
-
-
-            eleccion = LeerUnNumeroCorrecto(3, 0);
-
-            switch (eleccion)
-            {
-                case 1:
-                    if (Jugadores[TurnoDelJugador].Dinero > 0 && Jugadores[TurnoDelJugador].Dinero >= dineroDeRonda)
-                        Apostar();
-                    else
-                    {
-                        Console.WriteLine("No tienes dinero");
-                        // Forzamos al jugador a retirarse si no tiene dinero suficiente para apostar
-                        Retirarse();
-                    }
-                    break;
-                case 2:
-                    if (!unJugadorApostado)
-                        ++TurnoDelJugador;
-                    else
-                        Console.WriteLine("No puedes pasar hay una apuesta, apuestas o te retiras");
-                    break;
-                case 3:
-                    Retirarse();
-                    break;
-                case 0:
-                    Salir = true;
-                    return;
-            }
-
-            bool todosApostaron = DiccionarioDeApuestas.Values.All(apuesta => apuesta > 0);
-
-            if(!todosApostaron && unJugadorApostado)
-            {
-                if (Jugadores[TurnoDelJugador].EstaApostando)
-                {
-                    for(int i = 0; i < numeroDeJugadores; i++)
-                    {
-                        if (DiccionarioDeApuestas[Jugadores[i]] == 0)
-                        {
-                            TurnoDelJugador = Jugadores.IndexOf(Jugadores[i]);
-                            break;
-                        }
-                    }
-
-                }
-                else if(!Jugadores[TurnoDelJugador].EstaApostando)
-                {
-
-                }
-                else
-                {
-                    ++TurnoDelJugador;
-                }
-            }
-            else if (todosApostaron)
-            {
-                ++TurnoDelJugador;
-            }
-
-            if (TurnoDelJugador == numeroDeJugadores)
-                ++Ronda;
-
-            Console.WriteLine("Pulsa Enter para continuar...");
-            Console.ReadLine();
         }
-        
+
         static void Apostar()
         {
             int eleccion;
-            Console.WriteLine("Cuanto dinero quieres apostar? €{0}", Jugadores[TurnoDelJugador].Dinero);
-            eleccion = LeerUnNumeroCorrecto(Jugadores[TurnoDelJugador].Dinero, dineroDeRonda, "Eso no es un numero o no llega al monto minimo");
+            Jugador jugadorActual = Jugadores[TurnoDelJugador];
 
-            if (eleccion > dineroDeRonda)
-                Console.WriteLine("Se ha actualizado el minimo monto a : {0}", eleccion);
+            Console.WriteLine("Cuanto dinero quieres apostar? {0} tu apuesta es de {1}. Y el monto es de {2}", jugadorActual.Dinero, DiccionarioDeApuestas[jugadorActual], dineroDeRonda);
+            eleccion = LeerUnNumeroCorrecto(jugadorActual.Dinero, 0, "Eso no es un numero o no llega al monto minimo");
+            // Se suma el dinero de la apuesta al diccionario para comprobar que todos apuestan lo mismo
+            DiccionarioDeApuestas[jugadorActual] += eleccion;
+            // Si el dinero que apuestas es mayor que el monto actual este se actualiza
+            if (DiccionarioDeApuestas[jugadorActual] > dineroDeRonda)
+            {
+                dineroDeRonda = DiccionarioDeApuestas[jugadorActual];
+                Console.WriteLine("Se ha actualizado el minimo monto a : {0}", dineroDeRonda);
+            }
 
-            dineroDeRonda = eleccion;
-
-            DiccionarioDeApuestas[Jugadores[TurnoDelJugador]] = eleccion;
-
-            dineroTotal += dineroDeRonda;
-            Jugadores[TurnoDelJugador].Apuesta(eleccion);
+            // Se le suma el dinero al total
+            dineroTotal += eleccion;
+            jugadorActual.Apuesta(eleccion);
         }
 
 
         static void Retirarse()
         {
             Jugadores[TurnoDelJugador].SeRetira = true;
+            DiccionarioDeApuestas.Remove(Jugadores[TurnoDelJugador]);
         }
 
         static void FinalDePartida()
@@ -258,15 +277,12 @@ namespace CartasYPalos
             // el dinero de ronda, el dinero total y las cartas de los jugadores
             TurnoDelJugador = 0;
 
-            foreach (var jugador in Jugadores)
+            for (TurnoDelJugador = 0; TurnoDelJugador < numeroDeJugadores; TurnoDelJugador++)
             {
-
                 // Escoges que cartas de la mesa quieres usar
                 Jugadores[TurnoDelJugador].AñadirCartas(SeleccionarCartas(3));
                 Jugadores[TurnoDelJugador].MostrarMano();
-                Console.ReadLine();
-
-                TurnoDelJugador++;
+                Console.ReadLine();   
             }
             
 
@@ -283,16 +299,17 @@ namespace CartasYPalos
             HashSet<int> indicesYaSeleccionados = new HashSet<int>();
 
             Console.Clear();
-            Console.Write("Las cartas en la mesa son : ");
-            if (CartasEnLaMesa.Count > 0)
+            Console.WriteLine("Las cartas en la mesa son : ");
+            Console.WriteLine("=============================================================================");
+            for (int j = 0; j < CartasEnLaMesa.Count(); j++)
             {
-                for (int j = 0; j < CartasEnLaMesa.Count(); j++)
-                {
-                    Console.Write($"|| {CartasEnLaMesa[j].TipoDeCarta} - {CartasEnLaMesa[j].Numero} ");
-                }
-                Console.Write("||");
+                Console.Write($"|| {CartasEnLaMesa[j].TipoDeCarta} - {CartasEnLaMesa[j].Numero} ");
             }
-            Console.WriteLine();
+            Console.WriteLine("||");
+            Console.WriteLine("=============================================================================");
+            
+
+            Jugadores[TurnoDelJugador].MostrarMano();
 
             Console.WriteLine("Por favor Jugador {0} escribe las tres cartas de la mesa que vas a usar", TurnoDelJugador + 1);
 

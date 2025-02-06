@@ -18,7 +18,7 @@ namespace CartasYPalos
         public bool SeRetira;
         public bool EstaApostando;
         public int Dinero { get { return dinero; } }
-        public List<Carta> Cartas { get; set; }
+        List<Carta> Cartas { get; set; }
 
         int dinero;
 
@@ -30,8 +30,9 @@ namespace CartasYPalos
             Cartas = new List<Carta>();
         }
 
-        public void AñadirCartas(Carta carta)
+        public void AñadirCartas(Baraja Baraja)
         {
+            Carta carta = Baraja.Robar(TipoDeRobo.PrimeroEnLaBaraja);
             Cartas.Add(carta);
         }
 
@@ -71,7 +72,7 @@ namespace CartasYPalos
             EstaApostando = true;
         }
 
-        public TipoDeJugada ObtenerJugada(List<Carta>CartasEnLaMesa)
+        public TipoDeJugada ObtenerJugada()
         {
             // Pareja: Para una mano que tenga dos cartas del mismo valor.
             // DoblePareja: Para una mano con dos pares de cartas del mismo valor.
