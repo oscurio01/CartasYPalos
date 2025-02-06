@@ -53,7 +53,7 @@ namespace CartasYPalos
                     TurnoDelJugador = Jugadores.IndexOf(jugador);
             }
 
-            Console.WriteLine($"Bien hecho jugador {TurnoDelJugador + 1}, parece que eres el unico en pie");
+            Console.WriteLine($"Bien hecho jugador {TurnoDelJugador + 1}, parece que eres el unico en pie, te llevas {Jugadores[TurnoDelJugador].Dinero+dineroTotal}$ a casa");
         }
 
         static int LeerUnNumeroCorrecto(int maximo, int minimo = 0, string texto = "Numero no valido")
@@ -131,13 +131,17 @@ namespace CartasYPalos
 
             TurnoDelJugador = TurnoDelJugador % numeroDeJugadores;
 
+            // Para comprobar si alguien aposto en la ronda anterior
+            if(Ronda != 0)
+                unJugadorApostado = dineroDeRonda != 0 ? true : DiccionarioDeApuestas.Values.Any(apuesta => apuesta > 0);
+
             // Si casi los jugadores abandonan, gana el ultimo en pie
             if (Jugadores.Select(c => c.SeRetira).Count(v => v == true) == numeroDeJugadores - 1)
             {
                 Salir = true;
                 return;
             }
-            // Si el jugador se retira de esa partida no aparece mas hasta la siguiente
+            // Si el jugador se retira de esa partida y no aparece mas hasta la siguiente
             if (Jugadores[TurnoDelJugador].SeRetira)
             {
                 ++TurnoDelJugador;
@@ -176,8 +180,8 @@ namespace CartasYPalos
             }
 
             ApuestasIgualadas = DiccionarioDeApuestas.Values.All(v=> v == DiccionarioDeApuestas.Values.Max());
-            // Para comprobar si alguien aposto dinero tanto en esta ronda como en la anterior
-            unJugadorApostado = dineroTotal != 0 ? true : DiccionarioDeApuestas.Values.Any(apuesta => apuesta > 0);
+            // Para comprobar si alguien aposto dinero en esta ronda
+            unJugadorApostado = dineroDeRonda != 0 ? true : DiccionarioDeApuestas.Values.Any(apuesta => apuesta > 0);
 
             // Compruebo si alguien ha apostado y si las apuestas estan iguales
             // Es decir que todos han apostado el maximo de la ronda 
@@ -215,9 +219,10 @@ namespace CartasYPalos
         
         static void MostrarPantalla()
         {
+            Jugador jugadorActual = Jugadores[TurnoDelJugador];
             Console.Clear();
             Console.WriteLine("Ronda : {0}", Ronda);
-            Console.Write("Las cartas en la mesa son : ");
+            Console.Write(Ronda == 0 ?"Es la primera ronda, las cartas estan ocultas" :"Las cartas en la mesa son : ");
             if (CartasEnLaMesa.Count > 0)
             {
                 for (int i = 0; i < CartasEnLaMesa.Count(); i++)
@@ -227,11 +232,14 @@ namespace CartasYPalos
                 Console.Write("||");
             }
             Console.WriteLine();
-            Console.WriteLine($"Jugador {TurnoDelJugador + 1} ");
+            Console.WriteLine($"Jugador {TurnoDelJugador + 1} Dinero {jugadorActual.Dinero}$");
 
-            Jugadores[TurnoDelJugador].MostrarMano();
+            jugadorActual.MostrarMano();
 
-            Console.WriteLine($"La apuesta actual es de: {dineroDeRonda} y el total : {dineroTotal}");
+            Console.WriteLine($"La apuesta actual es de: {dineroDeRonda}$ y el total : {dineroTotal}$");
+
+            if(DiccionarioDeApuestas[jugadorActual] < dineroDeRonda)
+                Console.WriteLine($"Te falta {dineroDeRonda - DiccionarioDeApuestas[jugadorActual]}$ para igualar");
 
             Console.WriteLine(@"Que quieres hacer?
 ===========
@@ -246,8 +254,8 @@ namespace CartasYPalos
             int eleccion;
             Jugador jugadorActual = Jugadores[TurnoDelJugador];
 
-            Console.WriteLine("Cuanto dinero quieres apostar? {0} tu apuesta es de {1}. Y el monto es de {2}", jugadorActual.Dinero, DiccionarioDeApuestas[jugadorActual], dineroDeRonda);
-            eleccion = LeerUnNumeroCorrecto(jugadorActual.Dinero, 0, "Eso no es un numero o no llega al monto minimo");
+            Console.WriteLine("Tienes {0}$ tu apuesta es de {1}$. Y el monto es de {2}$", jugadorActual.Dinero, DiccionarioDeApuestas[jugadorActual], dineroDeRonda);
+            eleccion = LeerUnNumeroCorrecto(jugadorActual.Dinero, 1, "Eso no es un numero o no llega al monto minimo");
             // Se suma el dinero de la apuesta al diccionario para comprobar que todos apuestan lo mismo
             DiccionarioDeApuestas[jugadorActual] += eleccion;
             // Si el dinero que apuestas es mayor que el monto actual este se actualiza
@@ -277,14 +285,13 @@ namespace CartasYPalos
             // el dinero de ronda, el dinero total y las cartas de los jugadores
             TurnoDelJugador = 0;
 
-            for (TurnoDelJugador = 0; TurnoDelJugador < numeroDeJugadores; TurnoDelJugador++)
-            {
-                // Escoges que cartas de la mesa quieres usar
-                Jugadores[TurnoDelJugador].AñadirCartas(SeleccionarCartas(3));
-                Jugadores[TurnoDelJugador].MostrarMano();
-                Console.ReadLine();   
-            }
-            
+            //for (TurnoDelJugador = 0; TurnoDelJugador < numeroDeJugadores; TurnoDelJugador++)
+            //{
+            //    // Escoges que cartas de la mesa quieres usar
+            //    Jugadores[TurnoDelJugador].AñadirCartas(SeleccionarCartas(3));
+            //    Jugadores[TurnoDelJugador].MostrarMano();
+            //    Console.ReadLine();   
+            //}
 
             QuienGanaLaApuesta();
         }
@@ -342,6 +349,7 @@ namespace CartasYPalos
             // Comprueba en cada jugador ObtenerJugada y si ese jugador no participa
             // no cuenta y se comprueba por orden de escala en TipoDeJugada
             // el que menor numero tenga gana y si hay empate se reparte
+
 
             return ganador;
 
