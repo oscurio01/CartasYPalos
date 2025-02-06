@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace CartasYPalos
@@ -136,7 +137,7 @@ namespace CartasYPalos
                 unJugadorApostado = dineroDeRonda != 0 ? true : DiccionarioDeApuestas.Values.Any(apuesta => apuesta > 0);
 
             // Si casi los jugadores abandonan, gana el ultimo en pie
-            if (Jugadores.Select(c => c.SeRetira).Count(v => v == true) == numeroDeJugadores - 1)
+            if (Jugadores.Select(c => c.SeRetira).Count(v => v == true) == numeroDeJugadores - 1 || Jugadores.Select(c => c.SeRetira).Count(v => v == true) == numeroDeJugadores)
             {
                 Salir = true;
                 return;
@@ -216,6 +217,43 @@ namespace CartasYPalos
             Console.WriteLine("Pulsa Enter para continuar...");
             Console.ReadLine();
         }
+
+        static void ComprobacionDeRonda()
+        {
+            ApuestasIgualadas = DiccionarioDeApuestas.Values.All(v => v == DiccionarioDeApuestas.Values.Max());
+            // Para comprobar si alguien aposto dinero en esta ronda
+            unJugadorApostado = dineroDeRonda != 0 ? true : DiccionarioDeApuestas.Values.Any(apuesta => apuesta > 0);
+
+            // Compruebo si alguien ha apostado y si las apuestas estan iguales
+            // Es decir que todos han apostado el maximo de la ronda 
+            if (!ApuestasIgualadas)
+            {
+                // Compruebo si tanto si el jugado ha apostado, como si el dinero es el maximo de la ronda
+                if (Jugadores[TurnoDelJugador].EstaApostando &&
+                    DiccionarioDeApuestas[Jugadores[TurnoDelJugador]] == dineroDeRonda)
+                {
+                    for (int i = 0; i < numeroDeJugadores; i++)
+                    {
+                        // Revisa quien no tiene el mismo monto de apuestas que el dinero de la ronda
+                        if (DiccionarioDeApuestas[Jugadores[i]] != dineroDeRonda)
+                        {
+                            TurnoDelJugador = Jugadores.IndexOf(Jugadores[i]);
+                            break;
+                        }
+                    }
+                }
+            }
+            else if (ApuestasIgualadas && unJugadorApostado)
+            {
+                TurnoDelJugador = numeroDeJugadores; // Si todas las apuestas son iguales y hay algo mas que un 0
+                ++Ronda;
+            }
+            else
+                ++TurnoDelJugador;
+
+            if (TurnoDelJugador == numeroDeJugadores && !unJugadorApostado)
+                ++Ronda;
+        }
         
         static void MostrarPantalla()
         {
@@ -279,31 +317,7 @@ namespace CartasYPalos
 
         static void FinalDePartida()
         {
-            // Cuando todos han apostado Y las cartas han salido
-            // Se tiene que comparar quien de todos los jugadores es el ganador
-            // Se le suma el dinero total de esa partida y se resetea tanto
-            // el dinero de ronda, el dinero total y las cartas de los jugadores
             TurnoDelJugador = 0;
-
-            //for (TurnoDelJugador = 0; TurnoDelJugador < numeroDeJugadores; TurnoDelJugador++)
-            //{
-            //    // Escoges que cartas de la mesa quieres usar
-            //    Jugadores[TurnoDelJugador].AñadirCartas(SeleccionarCartas(3));
-            //    Jugadores[TurnoDelJugador].MostrarMano();
-            //    Console.ReadLine();   
-            //}
-
-            QuienGanaLaApuesta();
-        }
-
-        static List<Carta> SeleccionarCartas(int cantidad)
-        {
-            int eleccion = 0;
-
-            List<Carta> seleccionadas = new List<Carta>();
-
-            // Usamos un HashSet para evitar repetidos
-            HashSet<int> indicesYaSeleccionados = new HashSet<int>();
 
             Console.Clear();
             Console.WriteLine("Las cartas en la mesa son : ");
@@ -314,45 +328,90 @@ namespace CartasYPalos
             }
             Console.WriteLine("||");
             Console.WriteLine("=============================================================================");
-            
 
-            Jugadores[TurnoDelJugador].MostrarMano();
+            // Cuando todos han apostado Y las cartas han salido
+            // Se tiene que comparar quien de todos los jugadores es el ganador
+            TipoDeJugada jugada;
+            (TurnoDelJugador,jugada)  = QuienGanaLaApuesta();
 
-            Console.WriteLine("Por favor Jugador {0} escribe las tres cartas de la mesa que vas a usar", TurnoDelJugador + 1);
+            Console.WriteLine($"El ganador es : Jugador {TurnoDelJugador + 1 } con {jugada}");
 
-            while (seleccionadas.Count < cantidad)
+            // Se le suma el dinero total de esa partida y se resetea tanto
+            // el dinero de ronda, el dinero total y las cartas de los jugadores
+            Jugadores[TurnoDelJugador].AñadirDinero(dineroTotal);
+
+            dineroDeRonda = 0;
+            dineroTotal = 0;
+            for(int i = 0; i < numeroDeJugadores; i++)
             {
-                eleccion = LeerUnNumeroCorrecto(CartasEnLaMesa.Count(), 1, "Esa carta no existe");
-                eleccion--;
-
-                if (indicesYaSeleccionados.Contains(eleccion))
-                {
-                    Console.WriteLine("Ya has seleccionado esa carta, elige otra.");
-                }
-                else
-                {
-                    // Añade la carta a la baraja personal 
-                    seleccionadas.Add(CartasEnLaMesa[eleccion]);
-                    // Se añade al indice para evitar repeticiones
-                    indicesYaSeleccionados.Add(eleccion);
-
-                    Console.WriteLine($"Has seleccionado: {CartasEnLaMesa[eleccion].TipoDeCarta} - {CartasEnLaMesa[eleccion].Numero}");
-                }
+                Jugadores[i].LimpiarMano();
+                DarCartaAJugadores(i);
             }
 
-            return seleccionadas;
+            Console.WriteLine(@"
+Quieres jugar otra partida o quieres terminar la partida?
+1.Continuar
+2.Salir");
+            int eleccion = LeerUnNumeroCorrecto(2, 1);
+
+            if (eleccion == 1)
+            {
+                Ronda = 0;
+                TurnoDelJugador = 0;
+                CartasEnLaMesa.Clear();
+            }
+            else if (eleccion == 2)
+            {
+                foreach (var jugador in Jugadores)
+                {
+                    jugador.SeRetira = true;
+                }
+            }
         }
 
-        static int QuienGanaLaApuesta()
+        static (int, TipoDeJugada) QuienGanaLaApuesta()
         {
-            int ganador = 0;
             // Comprueba en cada jugador ObtenerJugada y si ese jugador no participa
             // no cuenta y se comprueba por orden de escala en TipoDeJugada
-            // el que menor numero tenga gana y si hay empate se reparte
+            // el que mayor numero tenga gana y si hay empate se reparte
+            int indice = 0;
+            int numeroMasAlto = -1;
+            int ganador = 0;
+            TipoDeJugada jugadaAnterior = TipoDeJugada.Ninguna;
+            List<(int, TipoDeJugada)> Jugadas = new List<(int, TipoDeJugada)>();
 
+            foreach(var jugador in Jugadores)
+            {
+                indice++;
+                if(jugador.SeRetira)
+                    continue;
 
-            return ganador;
+                Jugadas.Add(jugador.ObtenerJugada(CartasEnLaMesa));
 
+                Console.WriteLine($"Añadiendo Jugador {indice} y su jugada es: {Jugadas[indice-1].Item2}");
+                Thread.Sleep(1000);
+            }
+
+            for (int i = 0; i < Jugadas.Count; i++)
+            {
+                // Comparamos cada jugada con la jugada ganadora actual
+                if (Jugadas[i].Item2 > jugadaAnterior)
+                {
+                    jugadaAnterior = Jugadas[i].Item2;
+                    numeroMasAlto = Jugadas[i].Item1;
+                    ganador = i;
+                }
+                else if(Jugadas[i].Item2 == jugadaAnterior)
+                {
+                    if (Jugadas[i].Item1 > numeroMasAlto)
+                        ganador = i;
+                    else if (Jugadas[i].Item1 < numeroMasAlto)
+                        ganador = i - 1;
+                    else
+                        ganador = 0;
+                }
+            }
+            return (ganador, jugadaAnterior);
         }
     }
 }

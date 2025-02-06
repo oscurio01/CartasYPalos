@@ -21,15 +21,9 @@ namespace CartasYPalos
 
         void GenerarCartas()
         {
-
             foreach (TipoDeCarta tipo in Enum.GetValues(typeof(TipoDeCarta)))
             { 
-                for(int j = 2;  j <= 10; j++)
-                {
-                    Cartas.Add(new Carta(tipo, j.ToString()));
-                }
-
-                foreach(numeroEspecial numEsp in Enum.GetValues(typeof(numeroEspecial)))
+                foreach(NumerosDeCarta numEsp in Enum.GetValues(typeof(NumerosDeCarta)))
                 {
                     Cartas.Add(new Carta(tipo, numEsp));
                 }
@@ -42,11 +36,6 @@ namespace CartasYPalos
         {
             Random random = new Random();
             Cartas = Cartas.OrderBy(c => random.Next()).ToList();
-        }
-
-        public int TamañoDeLaBaraja()
-        {
-            return Cartas.Count;
         }
 
         // Robar
@@ -64,21 +53,5 @@ namespace CartasYPalos
             return carta;
 
         }
-
-        // Metodo Mostrar cartas
-        public void MostrarCartas()
-        {
-            for (int i = 0; i < Cartas.Count; i++)
-            {
-                Console.Write($"{i + 1}/ Tipo: {Cartas[i].TipoDeCarta} - {Cartas[i].Numero} ");
-            }
-            Console.WriteLine();
-        }
-
-        public void ColocarCarta(Carta carta)
-        {
-            Cartas.Add(carta);
-        }
-
     }
 }
