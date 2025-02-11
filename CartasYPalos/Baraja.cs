@@ -10,7 +10,6 @@ namespace CartasYPalos
 
     internal class Baraja
     {
-
         List<Carta> Cartas { get; set; }
 
         public Baraja() 

@@ -14,10 +14,8 @@ namespace CartasYPalos
     {
         public NumerosDeCarta Numero { get { return numero; } }
         public TipoDeCarta TipoDeCarta {  get { return _tipoCarta; } set { _tipoCarta = value; } }
-        public Color Color {get { return color; } set { color = value; } }
 
         private NumerosDeCarta numero;
-        private Color color;
         private TipoDeCarta _tipoCarta;
 
         public Carta(TipoDeCarta tipoCarta, NumerosDeCarta numero)
