@@ -44,20 +44,31 @@ namespace CartasYPalos
 
         public void MostrarMano()
         {
+
             Console.WriteLine("Tus cartas son:");
-            for(int i = 0; i < Cartas.Count(); i++)
-            {
-                Console.Write("=================");
-            }
-            Console.WriteLine();
+
+            LineasConElTamanyoDeLasCartas();
+
             for (int i = 0; i < Cartas.Count; i++)
             {
                 Console.Write($"|| {Cartas[i].TipoDeCarta} - {Cartas[i].Numero} ");
             }
             Console.WriteLine("||");
-            for (int i = 0; i < Cartas.Count(); i++)
+
+            LineasConElTamanyoDeLasCartas();
+        }
+
+        void LineasConElTamanyoDeLasCartas()
+        {
+            int espacioReservado = 0;
+            for (int i = 0; i < Cartas.Count; i++)
             {
-                Console.Write("=================");
+                Console.Write("=======");
+                espacioReservado = Cartas[i].TipoDeCarta.ToString().Count() + Cartas[i].Numero.ToString().Count();
+                for (int j = 0; j <= espacioReservado; j++)
+                {
+                    Console.Write("=");
+                }
             }
             Console.WriteLine();
         }
